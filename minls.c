@@ -4,8 +4,9 @@
 
 int main(int argc, char *argv[]) {
     int opt;
-    int pval;
-    int sval;
+    int pval = 0;
+    int sval = 0;
+    int vflag = 0;
     char *image = NULL;
     char *path = NULL;
 
@@ -13,25 +14,25 @@ int main(int argc, char *argv[]) {
     while ((opt = getopt(argc, argv, "vp:s:h")) != -1) {
         switch (opt) {
             case 'h':
-                print_help();
+                print_help(MINLS_PROG);
                 break;  
+            case 'v':
+                vflag = 1;
+                break;
             case 'p':
                 if ((pval = atoi(optarg)) == 0) {
-                    fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-                    fprintf(stderr, " image [ path ]\n");
+                    print_help(MINLS_PROG);
                     exit(EXIT_FAILURE);
                 }
                 break;
             case 's':
                 if ((sval = atoi(optarg)) == 0 || pval == 0) {
-                    fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-                    fprintf(stderr, " image [ path ]\n");
+                    print_help(MINLS_PROG);
                     exit(EXIT_FAILURE);
                 }
                 break;
             case '?':
-                fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-                fprintf(stderr, " image [ path ]\n");
+                print_help(MINLS_PROG);
                 exit(EXIT_FAILURE);
                 break;
         }
@@ -44,15 +45,15 @@ int main(int argc, char *argv[]) {
             image = argv[optind];
         }
         else {
-            fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-            fprintf(stderr, " image [ path ]\n");
+            print_help(MINLS_PROG);
             exit(EXIT_FAILURE);
         }
     }
     /* ./minls: print out the help instructions */
     if (argc == 1) {
-        print_help();
+        print_help(MINLS_PROG);
     }
-    
+    printf("Path %s\n", path); 
+    printf("image %s\n", image);
     return 0;
 }

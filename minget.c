@@ -12,25 +12,22 @@ int main(int argc, char *argv[]) {
     while ((opt = getopt(argc, argv, "vp:s:h")) != -1) {
         switch (opt) {
             case 'h':
-                print_help();
+                print_help(MINGET_PROG);
                 break;  
             case 'p':
                 if ((pval = atoi(optarg)) == 0) {
-                    fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-                    fprintf(stderr, " image [ path ]\n");
+                    print_help(MINGET_PROG);
                     exit(EXIT_FAILURE);
                 }
                 break;
             case 's':
                 if ((sval = atoi(optarg)) == 0 || pval == 0) {
-                    fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-                    fprintf(stderr, " image [ path ]\n");
+                    print_help(MINGET_PROG);
                     exit(EXIT_FAILURE);
                 }
                 break;
             case '?':
-                fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-                fprintf(stderr, " image [ path ]\n");
+                print_help(MINGET_PROG);
                 exit(EXIT_FAILURE);
                 break;
         }
@@ -46,8 +43,7 @@ int main(int argc, char *argv[]) {
             image = argv[optind];
         }
         else {
-            fprintf(stderr, "Usage: [ -p num [ -s num ] ]");
-            fprintf(stderr, " image [ path ]\n");
+            print_help(MINGET_PROG);
             exit(EXIT_FAILURE);
         }
     }
