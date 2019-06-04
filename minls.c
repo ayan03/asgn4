@@ -4,11 +4,14 @@
 
 int main(int argc, char *argv[]) {
     int opt;
+    int opt_ct = 0;
     int pval = 0;
     int sval = 0;
     int vflag = 0;
     char *image = NULL;
     char *path = NULL;
+    FILE *fp = NULL;
+    superblock s_block = { 0 };
 
     /* Handle command line arguments */
     while ((opt = getopt(argc, argv, "vp:s:h")) != -1) {
@@ -38,22 +41,23 @@ int main(int argc, char *argv[]) {
         }
     }
     for (; optind < argc; optind++) {
-        if (optind == argc - 1) {
-            path = argv[optind];
-        }
-        else if (optind == argc - 2) {
+        if (opt_ct == 0) {
             image = argv[optind];
+        }
+        else if (opt_ct == 1) {
+            path = argv[optind];
         }
         else {
             print_help(MINLS_PROG);
             exit(EXIT_FAILURE);
         }
     }
+
     /* ./minls: print out the help instructions */
     if (argc == 1) {
         print_help(MINLS_PROG);
     }
-    printf("Path %s\n", path); 
-    printf("image %s\n", image);
+
+    fp = read_image(image, &s_block, vflag);
     return 0;
 }
