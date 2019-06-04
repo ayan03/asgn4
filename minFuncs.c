@@ -43,7 +43,7 @@ FILE *read_image(char *imagefile, superblock *s_block, int vflag) {
 
     /* Check if the magic number matches */
     if (s_block->magic != MINIX_MAGIC) {
-        fprintf(stderr, "Bad magic number.  (0x%x)\n", s_block->magic);
+        fprintf(stderr, "Bad magic number.  (0x%04x)\n", s_block->magic);
         fprintf(stderr, "This doesn't look like a MINIX filesystem\n");
         shutdown_help(fp);
     }   
@@ -73,6 +73,19 @@ s_block->blocksize;
     printf("uid %d\n", i_node->mode);
     return 0;
 }
+
+int read_partition(FILE *fp, superblock *s_block, pt_entry* part, int p_num) {
+    char boot_sector[512];
+    fseek(fp, 0, SEEK_SET);
+    fread(boot_sector, 512, 1, fp);
+    if(boot_sector[510] != 85 || boot_sector[511] != 170) {
+        fprintf(stderr, "Bad partition exiting...\n");
+        shutdown_help(fp);
+    }
+    printf("good partition\n");
+    return 0;
+}
+
 
 /* Print out superblock information */
 void verb_sblock(superblock *s_block) {

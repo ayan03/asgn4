@@ -12,6 +12,7 @@ int main(int argc, char *argv[]) {
     char *path = NULL;
     FILE *fp = NULL;
     superblock s_block = { 0 };
+    pt_entry partition;
 
     /* Handle command line arguments */
     while ((opt = getopt(argc, argv, "vp:s:h")) != -1) {
@@ -60,5 +61,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     fp = read_image(image, &s_block, vflag);
+    read_partition(fp, &s_block, &partition, pval);
     return 0;
 }
