@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <time.h>
 #include "superblock.h"
 #include "partition.h"
 #include "inode.h"
@@ -15,12 +16,18 @@
 #define KILOBYTE 1024
 #define MINGET_PROG 0
 #define MINLS_PROG 1
+#define ROOT_DIR 1
 #define MINIX_PARTITION 129
 
 
 void print_help(int prog);
+void shutdown_help(FILE *fp);
 FILE *read_image(char *imagefile, superblock *s_block, int vflag);
+int read_inode(FILE *fp, superblock *s_block, inode *inode, int i_num);
+
+/* Functions declaration for -v option */
 void verb_sblock(superblock *s_block);
+void verb_inode(inode *i_node);
 
 
 #endif /* __MIN_H__ */

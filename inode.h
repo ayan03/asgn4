@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #define DIRECT_ZONES 7
-
+#define FLENGTH 60
 
 typedef struct __attribute__ ((__packed__)) inode {
     uint16_t    mode;
@@ -22,7 +22,8 @@ typedef struct __attribute__ ((__packed__)) inode {
 
 typedef struct __attribute__ ((__packed__)) dirent {
     uint32_t    inode; /* inode number */
-    u_char       name[60]; /* filename (nul-terminated if space available) */
+    u_char      name[FLENGTH]; /* filename (nul-terminated if 
+space available) */
 } dirent;
 
 #endif /* __INODE__ */

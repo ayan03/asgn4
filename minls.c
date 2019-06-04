@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
 
     /* Handle command line arguments */
     while ((opt = getopt(argc, argv, "vp:s:h")) != -1) {
+    /* TODO Switch to strtol instead of atoi to account for partition 0 */
         switch (opt) {
             case 'h':
                 print_help(MINLS_PROG);
@@ -56,8 +57,8 @@ int main(int argc, char *argv[]) {
     /* ./minls: print out the help instructions */
     if (argc == 1) {
         print_help(MINLS_PROG);
+        return 0;
     }
-
     fp = read_image(image, &s_block, vflag);
     return 0;
 }
