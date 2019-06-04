@@ -4,9 +4,16 @@
 #include "inode.h"
 
 /* Print out the help instructions for -h flag or no flag */
-void print_help() {
-    printf("usage: minls  [ -v ] [ -p num [ -s num ] ] imagefile");
-    printf(" [ path ]\n"); 
+
+void print_help(int prog) {
+    if (prog == MINLS_PROG) {
+        printf("usage: minls   [ -v ] [ -p part [ -s subpart ] ] imagefile");
+        printf(" [ path ]\n"); 
+    }
+    else { 
+        printf("usage: minget  [ -v ] [ -p part [ -s subpart ] ] imagefile");
+        printf(" srcpath [ dstpath]\n");
+    }
     printf("Options:\n");
     printf("    -p   part    --- select partition for filesystem");
     printf(" (default: none)\n");
