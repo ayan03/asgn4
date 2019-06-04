@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-typedef struct pt_entry {
+typedef struct __attribute__ ((__packed__)) pt_entry {
     uint8_t     bootind;            /* Boot magic number (0x80 if bootable) */
     uint8_t     start_head;         /* Start of partition in CHS */
     uint8_t     start_sec_cyl[2];   /* See note on sec_cyl addressing */

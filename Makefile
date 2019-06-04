@@ -3,6 +3,8 @@ CFLAGS = -Wall -pedantic
 LDFLAGS = 
 DEBUG = -g
 
+all: minls minget
+
 minls: minls.o minFuncs.o
 	$(CC) $(DEBUG) $(LDFLAGS) -o $@ $^
 

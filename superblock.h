@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-typedef struct superblock {
+typedef struct __attribute__ ((__packed__)) superblock {
     uint32_t    ninodes; /* number of inodes in this fs */
     uint16_t    pad1; /* padding to line stuff up properly */
     int16_t     i_blocks; /* # of blocks used by inode bit map */
