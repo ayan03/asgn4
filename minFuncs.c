@@ -1,4 +1,6 @@
 #include "min.h"
+#include "partition.h"
+#include "superblock.h"
 
 /* Print out the help instructions for -h flag or no flag */
 void print_help() {

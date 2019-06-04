@@ -49,6 +49,10 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     }
+    /* ./minls: print out the help instructions */
+    if (argc == 1) {
+        print_help();
+    }
     
     return 0;
 }
