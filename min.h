@@ -18,13 +18,27 @@
 #define MINLS_PROG 1
 #define ROOT_DIR 1
 #define MINIX_PARTITION 129
+#define PARTITION_TABLE_LOC 446
+#define MINIX_TYPE 129
+
+typedef struct flags {
+    int verbose;
+    int partition;
+    int subpartition;
+    char *path;
+    char *dstpath;
+    char *image;
+    FILE *fp;
+} flags;
 
 void print_mode(uint16_t mode);
 void print_help(int prog);
 void shutdown_help(FILE *fp);
-void read_image(char *imagefile, superblock *s_block, int vflag);
-int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num);
-void read_files(FILE *fp, superblock *s_block, inode *i_node, char *path);
+void read_image(superblock *s_block, flags *args);
+int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num,
+uint64_t p_off);
+int read_partition(flags *args, uint64_t *current, int p_num);
+void read_files(flags *args, superblock *s_block, inode *i_node, uint64_t p_off);
 
 /* Functions declaration for -v option */
 void verb_sblock(superblock *s_block);

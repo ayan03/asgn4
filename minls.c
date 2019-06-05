@@ -3,14 +3,16 @@
 #include "partition.h"
 
 int main(int argc, char *argv[]) {
+    flags args;
     int opt;
     int opt_ct = 0;
-    int pval = 0;
-    int sval = 0;
-    int vflag = 0;
-    char *image = NULL;
-    char *path = NULL;
     superblock s_block = { 0 };
+    args.partition = -1;
+    args.subpartition = -1;
+    args.verbose = 0;
+    args.image = NULL;
+    args.path = NULL;
+    args.fp = NULL;
 
     /* Handle command line arguments */
     while ((opt = getopt(argc, argv, "vp:s:h")) != -1) {
@@ -20,16 +22,17 @@ int main(int argc, char *argv[]) {
                 print_help(MINLS_PROG);
                 break;  
             case 'v':
-                vflag = 1;
+                args.verbose = 1;
                 break;
             case 'p':
-                if ((pval = atoi(optarg)) == 0) {
+                if ((args.partition = atoi(optarg)) < 0) {
                     print_help(MINLS_PROG);
                     exit(EXIT_FAILURE);
                 }
                 break;
             case 's':
-                if ((sval = atoi(optarg)) == 0 || pval == 0) {
+                if ((args.subpartition = atoi(optarg)) < 0 ||
+                    args.partition < 0) {
                     print_help(MINLS_PROG);
                     exit(EXIT_FAILURE);
                 }
@@ -42,15 +45,16 @@ int main(int argc, char *argv[]) {
     }
     for (; optind < argc; optind++) {
         if (opt_ct == 0) {
-            image = argv[optind];
+            args.image = argv[optind];
         }
         else if (opt_ct == 1) {
-            path = argv[optind];
+            args.path = argv[optind];
         }
         else {
             print_help(MINLS_PROG);
             exit(EXIT_FAILURE);
         }
+        opt_ct++;
     }
 
     /* ./minls: print out the help instructions */
@@ -58,6 +62,6 @@ int main(int argc, char *argv[]) {
         print_help(MINLS_PROG);
         return 0;
     }
-    read_image(image, &s_block, vflag);
+    read_image(&s_block, &args);
     return 0;
 }

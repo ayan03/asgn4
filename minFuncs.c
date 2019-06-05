@@ -26,61 +26,73 @@ void shutdown_help(FILE *fp) {
     exit(EXIT_FAILURE);
 }
 
-void read_image(char *imagefile, superblock *s_block, int vflag) {
+void read_image(superblock *s_block, flags *args) {
     inode i_node = { 0 };
-    FILE *fp = NULL;
-    if ((fp = fopen(imagefile, "r")) == NULL) {
-        fprintf(stderr, "Error opening image: %s\n", imagefile);
+    uint64_t p_off = 0;
+    if ((args->fp = fopen(args->image, "r")) == NULL) {
+        fprintf(stderr, "Error opening image: %s\n", args->image);
         exit(EXIT_FAILURE);
     }    
-    if (fseek(fp, KILOBYTE, SEEK_CUR) == -1) {
-        fprintf(stderr, "fseek() error exiting...\n");
-        shutdown_help(fp);
+
+    if (args->partition != -1) {
+        read_partition(args, &p_off, args->partition);
     }
-    if (fread(s_block, sizeof(superblock), 1, fp) != 1) {
+
+    if (args->subpartition != -1) {
+        read_partition(args, &p_off, args->subpartition);
+    }
+
+    if (fseek(args->fp, KILOBYTE, SEEK_CUR) == -1) {
+        fprintf(stderr, "fseek() error exiting...\n");
+        shutdown_help(args->fp);
+    }
+    if (fread(s_block, sizeof(superblock), 1, args->fp) != 1) {
         fprintf(stderr, "fread() error exiting...\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }
 
     /* Check if the magic number matches */
     if (s_block->magic != MINIX_MAGIC) {
         fprintf(stderr, "Bad magic number.  (0x%x)\n", s_block->magic);
         fprintf(stderr, "This doesn't look like a MINIX filesystem\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }   
     /* Read root inode */
-    read_inode(fp, s_block, &i_node, ROOT_DIR);
+    read_inode(args->fp, s_block, &i_node, ROOT_DIR, p_off);
 
 
-    if (vflag) {
+    if (args->verbose) {
         verb_sblock(s_block);
         verb_inode(&i_node);
     }
-    read_files(fp, s_block, &i_node, imagefile);
+    read_files(args, s_block, &i_node, p_off);
 }
 
 /* Print out the files in given directory */
-void read_files(FILE *fp, superblock *s_block, inode *i_node, char *path) {
+void read_files(flags *args, superblock *s_block, inode *i_node, 
+uint64_t p_off) {
     int i = 0;
     FILE *d_fp;
     dirent *dir = NULL;
     inode *other_node;
     uint32_t zone_size = s_block->blocksize << s_block->log_zone_size;
-    d_fp = fopen(path, "r");
+    d_fp = fopen(args->image, "r");
     if ((dir = calloc(1, sizeof(dirent))) == NULL) {
         fprintf(stderr, "Calloc failure exiting...\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }
     
     if ((other_node = calloc(1, sizeof(inode))) == NULL) {
         fprintf(stderr, "Calloc failure exiting...\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }
-    fseek(fp, zone_size * i_node->zone[0], SEEK_SET);
+
+    fseek(args->fp, zone_size * i_node->zone[0] + p_off, SEEK_SET);
+
     for (i = 0; i < i_node->size / sizeof(dirent); i++) {
-        fread(dir, sizeof(dirent), 1, fp);
+        fread(dir, sizeof(dirent), 1, args->fp);
         if (dir->inode != 0) {
-            read_inode(d_fp, s_block, other_node, dir->inode);
+            read_inode(d_fp, s_block, other_node, dir->inode, p_off);
             print_mode(other_node->mode);
             printf("    %d   %s\n", other_node->size ,dir->name);
         }
@@ -89,14 +101,13 @@ void read_files(FILE *fp, superblock *s_block, inode *i_node, char *path) {
     free(other_node);
 }
 
-
-/* TODO Incomplete only works for root node case */
 /* Read in given i_node always start at root */
-int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num) {
+int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num,
+uint64_t p_off) {
     uint32_t inode_loc = (2 + s_block->i_blocks + s_block->z_blocks) *
 s_block->blocksize;
     inode_loc += (i_num - 1) * sizeof(inode);
-    if (fseek(fp, inode_loc, SEEK_SET) == -1) {
+    if (fseek(fp, inode_loc + p_off, SEEK_SET) == -1) {
         fprintf(stderr, "fseek() error exiting...\n");
         shutdown_help(fp);
     }
@@ -104,6 +115,38 @@ s_block->blocksize;
         fprintf(stderr, "fread() error exiting...\n");
         shutdown_help(fp);
     }
+    return 0;
+}
+
+
+int read_partition(flags *args, uint64_t *p_off, int p_num) {
+    uint8_t boot_sector[512];
+    pt_entry *table;
+    pt_entry *partition;
+    fseek(args->fp, *p_off, SEEK_SET);
+    fread(boot_sector, 512, 1, args->fp);
+    if(boot_sector[510] != 85 || boot_sector[511] != 170) {
+        fprintf(stderr, "Bad partition exiting...\n");
+        shutdown_help(args->fp);
+    }
+    
+    /* Get the partition table from the boot sector and print if verbose*/
+    table = (pt_entry*)(boot_sector + PARTITION_TABLE_LOC);
+    if (args->verbose) { 
+        printf("Print the table TODO\n");
+    }
+
+    /* Index to desired partition in the table */
+    partition = table + p_num;
+
+    /* Check to see if the desired partition is valid */
+    if(partition->type != MINIX_TYPE) {
+        fprintf(stderr, "Not a valid partition found in the table\n");
+        shutdown_help(args->fp);
+    }
+    
+    /* Move offset to the first sector of LBA adressing */
+    *p_off = partition->lFirst * 512;
     return 0;
 }
 
