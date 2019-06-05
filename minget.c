@@ -61,6 +61,12 @@ int main(int argc, char *argv[]) {
         opt_ct++;
     }
 
+    /* Quit if imagefile or srcpath not specified */
+    if (args.path == NULL || args.image == NULL) {
+        print_help(MINGET_PROG);
+        exit(EXIT_FAILURE);
+    }
+
     /* ./minls: print out the help instructions */
     if (argc == 1) {
         print_help(MINGET_PROG);

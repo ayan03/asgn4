@@ -59,6 +59,12 @@ int main(int argc, char *argv[]) {
         }
         opt_ct++;
     }
+    
+    /* Quit if imagefile not specified */
+    if (args.image == NULL) {
+        print_help(MINLS_PROG);
+        exit(EXIT_FAILURE);
+    }
 
     /* Find the path count */
     if (args.path) {

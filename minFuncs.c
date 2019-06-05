@@ -53,7 +53,7 @@ void read_image(superblock *s_block, flags *args, int prog) {
         read_partition(args, &p_off, args->subpartition);
     }
 
-    if (fseek(args->fp, KILOBYTE, SEEK_CUR) == -1) {
+    if (fseek(args->fp, p_off + KILOBYTE, SEEK_SET) == -1) {
         fprintf(stderr, "fseek() error exiting...\n");
         shutdown_help(args->fp);
     }
