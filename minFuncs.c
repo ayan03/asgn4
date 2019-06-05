@@ -27,8 +27,18 @@ void shutdown_help(FILE *fp) {
 }
 
 void read_image(superblock *s_block, flags *args) {
+    int i = 0;
+    int j = 0;
+    int match = 0;
+    int zone_num = 0;
+    char *token;
     inode i_node = { 0 };
     uint64_t p_off = 0;
+    dirent *dir = NULL;
+    char **path_arr = NULL;
+    uint32_t zone_size = 0;
+    char tmp_path[MAX_PATH];
+
     if ((args->fp = fopen(args->image, "r")) == NULL) {
         fprintf(stderr, "Error opening image: %s\n", args->image);
         exit(EXIT_FAILURE);
@@ -53,19 +63,101 @@ void read_image(superblock *s_block, flags *args) {
 
     /* Check if the magic number matches */
     if (s_block->magic != MINIX_MAGIC) {
-        fprintf(stderr, "Bad magic number.  (0x%x)\n", s_block->magic);
+        fprintf(stderr, "Bad magic number.  (0x%04x)\n", s_block->magic);
         fprintf(stderr, "This doesn't look like a MINIX filesystem\n");
         shutdown_help(args->fp);
     }   
+    zone_size = s_block->blocksize << s_block->log_zone_size;
+
     /* Read root inode */
     read_inode(args->fp, s_block, &i_node, ROOT_DIR, p_off);
+
+    /* TODO ADD PATH */
+    /* Allocate space for path */
+    if (args->path != NULL) {
+        if ((path_arr = calloc(args->path_ct, sizeof(char*))) == NULL) {
+            fprintf(stderr, "Calloc() error exiting...\n");
+            shutdown_help(args->fp);
+        }
+        for (i = 0; i < args->path_ct; i++) {
+            if ((path_arr[i] = calloc(FLENGTH + 1, sizeof(char))) == NULL) {
+                fprintf(stderr, "Calloc() error exiting...\n");
+                shutdown_help(args->fp);
+            }
+        }
+        i = 0;
+        strcpy(tmp_path, args->path);
+        token = strtok(tmp_path, "/");
+        while (token != NULL) {
+            strcpy(path_arr[i], token);
+            i++;
+            token = strtok(NULL, "/");
+        }
+        
+        if ((dir = calloc(1, sizeof(dirent))) == NULL) {
+            fprintf(stderr, "Calloc failure exiting...\n");
+            shutdown_help(args->fp);
+            /* Add frees */
+        }
+        /* TODO Traverse from root to end path */
+
+        for (i = 0; i < args->path_ct; i++) {
+            if (match != i) {
+                fprintf(stderr, "Bad path: %s\n", args->path);
+                shutdown_help(args->fp);
+            }
+            zone_num = 0;
+            fseek(args->fp, zone_size * i_node.zone[zone_num] + p_off, 
+SEEK_SET);
+            for (j = 0; j < i_node.size / sizeof(dirent); j++) {
+                fread(dir, sizeof(dirent), 1, args->fp);
+                /* If file names match */
+                if (!strcmp((char*)dir->name, path_arr[i])) {
+                    read_inode(args->fp, s_block, &i_node, dir->inode, p_off);
+                    match++;
+                    break;
+                }
+                /* Move to next direct zone if possible */
+                if (((j + 1) * sizeof(dirent) % zone_size) == 0) {
+                    if (zone_num < DIRECT_ZONES - 1) {
+                        zone_num++;
+                        fseek(args->fp, zone_size * i_node.zone[zone_num] + 
+p_off, SEEK_SET);    
+                    }
+                }
+                /* TODO INDIRECT ZONES */
+            }
+        }
+    }
 
 
     if (args->verbose) {
         verb_sblock(s_block);
         verb_inode(&i_node);
     }
+
+    /* Print out path if specified */
+    if (S_ISDIR(i_node.mode)) {
+        
+        if (args->path != NULL) {
+            printf("%s/:\n", args->path);
+        }
+        else {
+            printf("/:\n");
+        }
+    }
+    
+    /* Print out entire directory information */
     read_files(args, s_block, &i_node, p_off);
+
+    /* Free Path if applicable */
+    if (path_arr) {
+        for (i = 0; i < args->path_ct; i++) {
+            free(path_arr[i]);
+        }
+        free(path_arr);
+    }
+    fclose(args->fp);
 }
 
 /* Print out the files in given directory */
@@ -75,30 +167,56 @@ uint64_t p_off) {
     FILE *d_fp;
     dirent *dir = NULL;
     inode *other_node;
+    int zone_num = 0;
     uint32_t zone_size = s_block->blocksize << s_block->log_zone_size;
     d_fp = fopen(args->image, "r");
     if ((dir = calloc(1, sizeof(dirent))) == NULL) {
         fprintf(stderr, "Calloc failure exiting...\n");
+        fclose(d_fp);
         shutdown_help(args->fp);
     }
     
     if ((other_node = calloc(1, sizeof(inode))) == NULL) {
         fprintf(stderr, "Calloc failure exiting...\n");
+        fclose(d_fp);
         shutdown_help(args->fp);
     }
+    /* Working with a file */
+    if (!S_ISDIR(i_node->mode)) {
+        print_mode(i_node->mode);
+        printf("    %d   %s\n", i_node->size ,args->path);
+        return;
+    }
 
-    fseek(args->fp, zone_size * i_node->zone[0] + p_off, SEEK_SET);
+    /* Move to first direct zone */
+    fseek(args->fp, zone_size * i_node->zone[zone_num] + p_off, SEEK_SET);
 
+    /* Iterate through number of files */
     for (i = 0; i < i_node->size / sizeof(dirent); i++) {
         fread(dir, sizeof(dirent), 1, args->fp);
+        /* Print out file information */
         if (dir->inode != 0) {
             read_inode(d_fp, s_block, other_node, dir->inode, p_off);
             print_mode(other_node->mode);
             printf("    %d   %s\n", other_node->size ,dir->name);
         }
+        /* Check to see if you need to move to the next zone */
+        if (((i + 1) * sizeof(dirent) % zone_size) == 0) {
+            /* Move to next direct zone if possible */
+            if (zone_num < DIRECT_ZONES - 1) {
+                zone_num++;
+                fseek(args->fp, zone_size * i_node->zone[zone_num] + p_off,
+SEEK_SET);
+            }
+            /* TODO IMPLEMENT INDIRECT */
+        }
+        
     }
+
+    /* Free all data being used */
     free(dir);
     free(other_node);
+    fclose(d_fp);
 }
 
 /* Read in given i_node always start at root */
@@ -151,6 +269,12 @@ int read_partition(flags *args, uint64_t *p_off, int p_num) {
 }
 
 void print_mode(uint16_t mode) {
+    if (S_ISDIR(mode)) {
+        printf("d");
+    }
+    else {
+        printf("-");
+    }
     /* Print permission bits for owner */
     if (mode & 0400) {
         printf("r");
@@ -260,10 +384,4 @@ ctime(&c_time));
     printf("  uint32_t      double              %d\n", 
 i_node->double_indirect);
 }
-
-
-
-
-
-
 

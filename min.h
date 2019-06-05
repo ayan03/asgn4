@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <time.h>
+#include <sys/stat.h>
 #include "superblock.h"
 #include "partition.h"
 #include "inode.h"
@@ -20,11 +21,14 @@
 #define MINIX_PARTITION 129
 #define PARTITION_TABLE_LOC 446
 #define MINIX_TYPE 129
+#define MAX_PATH 4096
+
 
 typedef struct flags {
     int verbose;
     int partition;
     int subpartition;
+    int path_ct;
     char *path;
     char *dstpath;
     char *image;
@@ -38,7 +42,8 @@ void read_image(superblock *s_block, flags *args);
 int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num,
 uint64_t p_off);
 int read_partition(flags *args, uint64_t *current, int p_num);
-void read_files(flags *args, superblock *s_block, inode *i_node, uint64_t p_off);
+void read_files(flags *args, superblock *s_block, inode *i_node,
+ uint64_t p_off);
 
 /* Functions declaration for -v option */
 void verb_sblock(superblock *s_block);
