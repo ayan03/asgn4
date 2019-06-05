@@ -19,11 +19,12 @@
 #define ROOT_DIR 1
 #define MINIX_PARTITION 129
 
-
+void print_mode(uint16_t mode);
 void print_help(int prog);
 void shutdown_help(FILE *fp);
-FILE *read_image(char *imagefile, superblock *s_block, int vflag);
-int read_inode(FILE *fp, superblock *s_block, inode *inode, int i_num);
+void read_image(char *imagefile, superblock *s_block, int vflag);
+int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num);
+void read_files(FILE *fp, superblock *s_block, inode *i_node, char *path);
 
 /* Functions declaration for -v option */
 void verb_sblock(superblock *s_block);

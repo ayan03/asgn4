@@ -10,7 +10,6 @@ int main(int argc, char *argv[]) {
     int vflag = 0;
     char *image = NULL;
     char *path = NULL;
-    FILE *fp = NULL;
     superblock s_block = { 0 };
 
     /* Handle command line arguments */
@@ -59,6 +58,6 @@ int main(int argc, char *argv[]) {
         print_help(MINLS_PROG);
         return 0;
     }
-    fp = read_image(image, &s_block, vflag);
+    read_image(image, &s_block, vflag);
     return 0;
 }

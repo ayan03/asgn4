@@ -25,7 +25,8 @@ void shutdown_help(FILE *fp) {
     fclose(fp);
     exit(EXIT_FAILURE);
 }
-FILE *read_image(char *imagefile, superblock *s_block, int vflag) {
+
+void read_image(char *imagefile, superblock *s_block, int vflag) {
     inode i_node = { 0 };
     FILE *fp = NULL;
     if ((fp = fopen(imagefile, "r")) == NULL) {
@@ -47,21 +48,54 @@ FILE *read_image(char *imagefile, superblock *s_block, int vflag) {
         fprintf(stderr, "This doesn't look like a MINIX filesystem\n");
         shutdown_help(fp);
     }   
+    /* Read root inode */
     read_inode(fp, s_block, &i_node, ROOT_DIR);
+
 
     if (vflag) {
         verb_sblock(s_block);
         verb_inode(&i_node);
     }
-    
-    return fp;
+    read_files(fp, s_block, &i_node, imagefile);
 }
+
+/* Print out the files in given directory */
+void read_files(FILE *fp, superblock *s_block, inode *i_node, char *path) {
+    int i = 0;
+    FILE *d_fp;
+    dirent *dir = NULL;
+    inode *other_node;
+    uint32_t zone_size = s_block->blocksize << s_block->log_zone_size;
+    d_fp = fopen(path, "r");
+    if ((dir = calloc(1, sizeof(dirent))) == NULL) {
+        fprintf(stderr, "Calloc failure exiting...\n");
+        shutdown_help(fp);
+    }
+    
+    if ((other_node = calloc(1, sizeof(inode))) == NULL) {
+        fprintf(stderr, "Calloc failure exiting...\n");
+        shutdown_help(fp);
+    }
+    fseek(fp, zone_size * i_node->zone[0], SEEK_SET);
+    for (i = 0; i < i_node->size / sizeof(dirent); i++) {
+        fread(dir, sizeof(dirent), 1, fp);
+        if (dir->inode != 0) {
+            read_inode(d_fp, s_block, other_node, dir->inode);
+            print_mode(other_node->mode);
+            printf("    %d   %s\n", other_node->size ,dir->name);
+        }
+    }
+    free(dir);
+    free(other_node);
+}
+
 
 /* TODO Incomplete only works for root node case */
 /* Read in given i_node always start at root */
 int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num) {
     uint32_t inode_loc = (2 + s_block->i_blocks + s_block->z_blocks) *
 s_block->blocksize;
+    inode_loc += (i_num - 1) * sizeof(inode);
     if (fseek(fp, inode_loc, SEEK_SET) == -1) {
         fprintf(stderr, "fseek() error exiting...\n");
         shutdown_help(fp);
@@ -70,8 +104,67 @@ s_block->blocksize;
         fprintf(stderr, "fread() error exiting...\n");
         shutdown_help(fp);
     }
-    printf("uid %d\n", i_node->mode);
     return 0;
+}
+
+void print_mode(uint16_t mode) {
+    /* Print permission bits for owner */
+    if (mode & 0400) {
+        printf("r");
+    }
+    else {
+        printf("-");
+    }
+    if (mode & 0200) {
+        printf("w");
+    }
+    else {
+        printf("-");
+    }
+    if (mode & 0100) {
+        printf("x");
+    }
+    else {
+        printf("-");
+    }
+    /* Print permission bits for group */
+    if (mode & 0040) {
+        printf("r");
+    }
+    else {
+        printf("-");
+    }
+    if (mode & 0020) {
+        printf("w");
+    }
+    else {
+        printf("-");
+    }
+    if (mode & 0010) {
+        printf("x");
+    }
+    else {
+        printf("-");
+    }
+    /* Print permission bits for other */
+    if (mode & 0004) {
+        printf("r");
+    }
+    else {
+        printf("-");
+    }
+    if (mode & 0002) {
+        printf("w");
+    }
+    else {
+        printf("-");
+    }
+    if (mode & 0001) {
+        printf("x");
+    }
+    else {
+        printf("-");
+    }
 }
 
 /* Print out superblock information */
