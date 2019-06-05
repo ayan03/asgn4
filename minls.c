@@ -75,6 +75,6 @@ int main(int argc, char *argv[]) {
         print_help(MINLS_PROG);
         return 0;
     }
-    read_image(&s_block, &args);
+    read_image(&s_block, &args, MINLS_PROG);
     return 0;
 }
