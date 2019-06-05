@@ -25,64 +25,89 @@ void shutdown_help(FILE *fp) {
     fclose(fp);
     exit(EXIT_FAILURE);
 }
-FILE *read_image(char *imagefile, superblock *s_block, int vflag) {
+void read_image(superblock *s_block, flags *args) {
     inode i_node = { 0 };
-    FILE *fp = NULL;
-    if ((fp = fopen(imagefile, "r")) == NULL) {
-        fprintf(stderr, "Error opening image: %s\n", imagefile);
+    uint64_t current = 0;
+    if ((args->fp = fopen(args->image, "r")) == NULL) {
+        fprintf(stderr, "Error opening image: %s\n", args->image);
         exit(EXIT_FAILURE);
-    }    
-    if (fseek(fp, KILOBYTE, SEEK_CUR) == -1) {
-        fprintf(stderr, "fseek() error exiting...\n");
-        shutdown_help(fp);
     }
-    if (fread(s_block, sizeof(superblock), 1, fp) != 1) {
+    if (args->partition != -1) {
+        read_partition(args, &current, args->partition);
+    }
+    if(args->subpartition != -1) {
+        read_partition(args, &current, args->subpartition);
+    }
+
+        
+    if (fseek(args->fp, KILOBYTE, SEEK_CUR) == -1) {
+        fprintf(stderr, "fseek() error exiting...\n");
+        shutdown_help(args->fp);
+    }
+    if (fread(s_block, sizeof(superblock), 1, args->fp) != 1) {
         fprintf(stderr, "fread() error exiting...\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }
 
     /* Check if the magic number matches */
     if (s_block->magic != MINIX_MAGIC) {
         fprintf(stderr, "Bad magic number.  (0x%04x)\n", s_block->magic);
         fprintf(stderr, "This doesn't look like a MINIX filesystem\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }   
-    read_inode(fp, s_block, &i_node, ROOT_DIR);
+    read_inode(args, s_block, &i_node, ROOT_DIR);
 
-    if (vflag) {
+    if (args->verbose) {
         verb_sblock(s_block);
         verb_inode(&i_node);
     }
-    
-    return fp;
 }
 
 /* TODO Incomplete only works for root node case */
 /* Read in given i_node always start at root */
-int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num) {
+int read_inode(flags *args, superblock *s_block, inode *i_node, int i_num) {
     uint32_t inode_loc = (2 + s_block->i_blocks + s_block->z_blocks) *
 s_block->blocksize;
-    if (fseek(fp, inode_loc, SEEK_SET) == -1) {
+    if (fseek(args->fp, inode_loc, SEEK_SET) == -1) {
         fprintf(stderr, "fseek() error exiting...\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }
-    if (fread(i_node, sizeof(inode), 1, fp) != 1) {
+    if (fread(i_node, sizeof(inode), 1, args->fp) != 1) {
         fprintf(stderr, "fread() error exiting...\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }
     printf("uid %d\n", i_node->mode);
     return 0;
 }
 
-int read_partition(FILE *fp, superblock *s_block, pt_entry* part, int p_num) {
-    char boot_sector[512];
-    fseek(fp, 0, SEEK_SET);
-    fread(boot_sector, 512, 1, fp);
+int read_partition(flags *args, uint64_t *current, int p_num) {
+    uint8_t boot_sector[512];
+    pt_entry *table;
+    pt_entry *partition;
+    fseek(args->fp, *current, SEEK_SET);
+    fread(boot_sector, 512, 1, args->fp);
     if(boot_sector[510] != 85 || boot_sector[511] != 170) {
         fprintf(stderr, "Bad partition exiting...\n");
-        shutdown_help(fp);
+        shutdown_help(args->fp);
     }
-    printf("good partition\n");
+    
+    /* Get the partition table from the boot sector and print if verbose*/
+    table = (pt_entry*)(boot_sector + PARTITION_TABLE_LOC);
+    if (args->verbose) { 
+        printf("Print the table TODO\n");
+    }
+
+    /* Index to desired partition in the table */
+    partition = table + p_num;
+
+    /* Check to see if the desired partition is valid */
+    if(partition->type != MINIX_TYPE) {
+        fprintf(stderr, "Not a valid partition found in the table\n");
+        shutdown_help(args->fp);
+    }
+    
+    /* Move offset to the first sector of LBA adressing */
+    *current = partition->lFirst * 512;
     return 0;
 }
 
