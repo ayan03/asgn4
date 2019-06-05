@@ -4,11 +4,14 @@
 
 int main(int argc, char *argv[]) {
     flags args;
+    char *token;
     int opt;
     int opt_ct = 0;
+    char tmp_path[MAX_PATH];
     superblock s_block = { 0 };
     args.partition = -1;
     args.subpartition = -1;
+    args.path_ct = 0;
     args.verbose = 0;
     args.image = NULL;
     args.path = NULL;
@@ -55,6 +58,16 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
         opt_ct++;
+    }
+
+    /* Find the path count */
+    if (args.path) {
+        strcpy(tmp_path, args.path);
+        token = strtok(tmp_path, "/");
+        while (token != NULL) {
+            args.path_ct++;
+            token = strtok(NULL, "/");
+        }
     }
 
     /* ./minls: print out the help instructions */
