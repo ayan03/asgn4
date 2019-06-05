@@ -26,7 +26,7 @@ void shutdown_help(FILE *fp) {
     exit(EXIT_FAILURE);
 }
 
-void read_image(superblock *s_block, flags *args) {
+void read_image(superblock *s_block, flags *args, int prog) {
     inode i_node = { 0 };
     uint64_t p_off = 0;
     if ((args->fp = fopen(args->image, "r")) == NULL) {
@@ -65,7 +65,12 @@ void read_image(superblock *s_block, flags *args) {
         verb_sblock(s_block);
         verb_inode(&i_node);
     }
-    read_files(args, s_block, &i_node, p_off);
+    if(prog == MINLS_PROG) {
+        read_files(args, s_block, &i_node, p_off);
+    }
+    else {
+        transfer_file(s_block, &i_node, args, &p_off);
+    }
 }
 
 /* Print out the files in given directory */
@@ -148,7 +153,118 @@ int read_partition(flags *args, uint64_t *p_off, int p_num) {
     /* Move offset to the first sector of LBA adressing */
     *p_off = partition->lFirst * 512;
     return 0;
+} 
+
+uint32_t min(uint32_t a, uint32_t b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
 }
+void read_zone(flags *args, uint8_t *buffer, uint32_t available, 
+     uint64_t offset, uint32_t zone) {
+     if(zone != 0) {
+         fseek(args->fp, offset, SEEK_SET);
+         fread(buffer, available, 1, args->fp);
+     }
+     else {
+         memset(buffer, 0, available);
+     }
+}
+
+int output_file(flags *args, uint8_t *buffer, uint32_t size){
+    FILE *dst;
+    if (args->dstpath) {
+        dst = fopen(args->dstpath, "w");
+        if (!dst) {
+            fprintf(stderr, "Couldn't open %s for writing\n", args->dstpath);
+            return 1;
+        }
+        fwrite(buffer, size, 1, dst);
+        fclose(dst);
+    }
+    else {
+        /* write contents of file to stdout */
+        write(0, buffer, size);
+    }        
+    return 0;
+}
+void transfer_file(superblock *s_block, inode *i_node,
+    flags *args, uint64_t*p_off) {
+    int zone_size = s_block->blocksize << s_block->log_zone_size;
+    uint8_t *buffer = (uint8_t*)calloc(i_node->size,sizeof(uint8_t));
+    uint32_t cursor = 0;
+    uint32_t remaining = i_node->size;
+    uint32_t *indirect_zone = (uint32_t*)calloc(zone_size, 1);
+    uint32_t *dindirect_zone = (uint32_t*) calloc(zone_size, 1);
+    int i;
+    int j;
+    int result;
+    uint32_t available = 0;
+    
+    /* Read in all the direct zones necessary */ 
+    for (i = 0; i < DIRECT_ZONES; i++) {
+        /*get the maximum amount of bytes that should be read from the zone */
+        available = min(remaining, zone_size);
+
+        /* read in zone data */
+        read_zone(args, buffer + cursor, available, 
+            i_node->zone[i] * zone_size + *p_off, i_node->zone[i]);
+
+        /* update variables for continued  reading */          
+        remaining -= available;
+        cursor += available; 
+        if (remaining == 0) {
+            break;
+        }
+    }
+    
+    if (remaining != 0) {
+       /* get the indirect zones */
+        fseek(args->fp, i_node->indirect * zone_size + *p_off, SEEK_SET);
+        fread(indirect_zone, zone_size, 1, args->fp);
+        for (i = 0; i < zone_size / sizeof(uint32_t); i++) {
+            available = min(remaining, zone_size);
+            read_zone(args, buffer + cursor, available, 
+                indirect_zone[i] * zone_size + *p_off, indirect_zone[i]);
+            remaining -= available;
+            cursor += available;
+            if (remaining == 0) {
+                break;
+            }
+        }
+    }
+
+    if (remaining != 0) {
+        /* get the double indirect zones */
+        fseek(args->fp, i_node->double_indirect * zone_size + *p_off, SEEK_SET);
+        fread(dindirect_zone, zone_size, 1, args->fp);
+        for (i = 0; i < zone_size / sizeof(uint32_t); i++) {
+            /* get the indirect zone */
+            fseek(args->fp, dindirect_zone[i] * zone_size + *p_off, SEEK_SET);
+            fread(indirect_zone, zone_size, 1, args->fp);
+            for (j = 0; j < zone_size /sizeof(uint32_t); i++) {
+                available = min(remaining, zone_size);
+                read_zone(args, buffer + cursor, available,
+                    indirect_zone[j] * zone_size + *p_off, indirect_zone[j]);
+                remaining -= available;
+                cursor += available;
+                if(remaining == 0) {
+                    break;
+                }
+            }
+        }    
+    }    
+    result = output_file(args, buffer, i_node->size);
+    free(buffer);
+    free(indirect_zone);
+    free(dindirect_zone);
+    if (result) {
+        /* something went wrong when outputing to the file */
+        shutdown_help(args->fp);
+    }
+}    
+
 
 void print_mode(uint16_t mode) {
     /* Print permission bits for owner */

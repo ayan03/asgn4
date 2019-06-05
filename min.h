@@ -34,12 +34,14 @@ typedef struct flags {
 void print_mode(uint16_t mode);
 void print_help(int prog);
 void shutdown_help(FILE *fp);
-void read_image(superblock *s_block, flags *args);
+void read_image(superblock *s_block, flags *args, int prog);
 int read_inode(FILE *fp, superblock *s_block, inode *i_node, int i_num,
-uint64_t p_off);
+    uint64_t p_off);
 int read_partition(flags *args, uint64_t *current, int p_num);
-void read_files(flags *args, superblock *s_block, inode *i_node, uint64_t p_off);
-
+void read_files(flags *args, superblock *s_block, inode *i_node,
+    uint64_t p_off);
+void transfer_file(superblock *s_block, inode *i_node, flags *args,
+    uint64_t *p_off);
 /* Functions declaration for -v option */
 void verb_sblock(superblock *s_block);
 void verb_inode(inode *i_node);
