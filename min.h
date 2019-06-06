@@ -22,6 +22,7 @@
 #define PARTITION_TABLE_LOC 446
 #define MINIX_TYPE 129
 #define MAX_PATH 4096
+#define MAX_PARTITIONS 4
 
 
 typedef struct flags {

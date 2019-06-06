@@ -142,7 +142,10 @@ p_off, SEEK_SET);
     }
     /* Print out path if specified */
     if (S_ISDIR(i_node.mode)) {
-        
+        if (prog == MINGET_PROG) { 
+            fprintf(stderr, "%s: Not a regular file.\n", args->path);
+            shutdown_help(args->fp);
+        }
         if (args->path != NULL) {
             printf("%s:\n", args->path);
         }
@@ -261,6 +264,7 @@ int read_partition(flags *args, uint64_t *p_off, int p_num) {
     uint8_t boot_sector[512];
     pt_entry *table;
     pt_entry *partition;
+    int i;
     fseek(args->fp, *p_off, SEEK_SET);
     fread(boot_sector, 512, 1, args->fp);
     if(boot_sector[510] != 85 || boot_sector[511] != 170) {
@@ -270,8 +274,32 @@ int read_partition(flags *args, uint64_t *p_off, int p_num) {
     
     /* Get the partition table from the boot sector and print if verbose*/
     table = (pt_entry*)(boot_sector + PARTITION_TABLE_LOC);
-    if (args->verbose) { 
-        printf("Print the table TODO\n");
+    if (args->verbose) {
+        /*partition should have offset 0 and subpartition should be greater*/ 
+        if (*p_off == 0) {
+            printf("Partition table:\n");
+        }
+        else {
+            printf("Subpartition table:\n");
+        }
+        printf("      ----Start----      ------End------\n");
+        printf(" Boot head  sec  cyl Type head  sec  cyl");
+        printf("     First      Size\n");
+        for (i = 0; i < MAX_PARTITIONS; i++) {
+            printf(" 0x%02x", table[i].bootind);
+            printf("%5d", table[i].start_head);
+            printf("%5d", table[i].start_sec_cyl[0]);
+            printf("%5d", table[i].start_sec_cyl[1]);
+            printf(" 0x%02x", table[i].type);
+            printf("%5d", table[i].end_head);
+            printf("%5d", table[i].end_sec_cyl[0]);
+            printf("%5d", table[i].end_sec_cyl[1]);
+            printf("%10d", table[i].lFirst);
+            printf("%10d\n", table[i].size);
+        }
+        printf("\n");
+
+            
     }
 
     /* Index to desired partition in the table */
@@ -353,7 +381,7 @@ void transfer_file(superblock *s_block, inode *i_node,
     }
     
     if (remaining != 0) {
-       /* get the indirect zones */
+        /*get the indirect zones*/ 
         fseek(args->fp, i_node->indirect * zone_size + *p_off, SEEK_SET);
         fread(indirect_zone, zone_size, 1, args->fp);
         for (i = 0; i < zone_size / sizeof(uint32_t); i++) {
@@ -369,7 +397,7 @@ void transfer_file(superblock *s_block, inode *i_node,
     }
 
     if (remaining != 0) {
-        /* get the double indirect zones */
+        /* get the double indirect zones*/ 
         fseek(args->fp, i_node->double_indirect * zone_size + *p_off, SEEK_SET);
         fread(dindirect_zone, zone_size, 1, args->fp);
         for (i = 0; i < zone_size / sizeof(uint32_t); i++) {
@@ -387,7 +415,7 @@ void transfer_file(superblock *s_block, inode *i_node,
                 }
             }
         }    
-    }    
+    } 
     result = output_file(args, buffer, i_node->size);
     free(buffer);
     free(indirect_zone);
