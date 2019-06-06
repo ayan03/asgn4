@@ -261,13 +261,13 @@ s_block->blocksize;
 
 
 int read_partition(flags *args, uint64_t *p_off, int p_num) {
-    uint8_t boot_sector[512];
+    uint8_t boot_sector[SECTOR_SIZE];
     pt_entry *table;
     pt_entry *partition;
     int i;
     fseek(args->fp, *p_off, SEEK_SET);
-    fread(boot_sector, 512, 1, args->fp);
-    if(boot_sector[510] != 85 || boot_sector[511] != 170) {
+    fread(boot_sector, SECTOR_SIZE, 1, args->fp);
+    if(boot_sector[510] != VALID510 || boot_sector[511] != VALID511) {
         fprintf(stderr, "Bad partition exiting...\n");
         shutdown_help(args->fp);
     }
@@ -312,7 +312,7 @@ int read_partition(flags *args, uint64_t *p_off, int p_num) {
     }
     
     /* Move offset to the first sector of LBA adressing */
-    *p_off = partition->lFirst * 512;
+    *p_off = partition->lFirst * SECTOR_SIZE;
     return 0;
 } 
 

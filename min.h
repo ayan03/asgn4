@@ -23,6 +23,9 @@
 #define MINIX_TYPE 129
 #define MAX_PATH 4096
 #define MAX_PARTITIONS 4
+#define SECTOR_SIZE 512
+#define VALID510 85
+#define VALID511 170
 
 
 typedef struct flags {
