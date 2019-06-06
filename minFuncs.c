@@ -73,7 +73,6 @@ void read_image(superblock *s_block, flags *args, int prog) {
     /* Read root inode */
     read_inode(args->fp, s_block, &i_node, ROOT_DIR, p_off);
 
-    /* TODO ADD PATH */
     /* Allocate space for path */
     if (args->path != NULL) {
         if ((path_arr = calloc(args->path_ct, sizeof(char*))) == NULL) {
@@ -87,20 +86,25 @@ void read_image(superblock *s_block, flags *args, int prog) {
             }
         }
         i = 0;
-        strcpy(tmp_path, args->path);
+        strncpy(tmp_path, args->path, strlen(args->path));
         token = strtok(tmp_path, "/");
         while (token != NULL) {
-            strcpy(path_arr[i], token);
+            strncpy(path_arr[i], token, FLENGTH);
             i++;
             token = strtok(NULL, "/");
         }
         
         if ((dir = calloc(1, sizeof(dirent))) == NULL) {
             fprintf(stderr, "Calloc failure exiting...\n");
+            if (path_arr) {
+                for (i = 0; i < args->path_ct; i++) {
+                    free(path_arr[i]);
+                }
+                free(path_arr);
+            }
             shutdown_help(args->fp);
-            /* Add frees */
         }
-        /* TODO Traverse from root to end path */
+        /* Traverse from root to end path */
 
         for (i = 0; i < args->path_ct; i++) {
             if (match != i) {
@@ -113,7 +117,7 @@ SEEK_SET);
             for (j = 0; j < i_node.size / sizeof(dirent); j++) {
                 fread(dir, sizeof(dirent), 1, args->fp);
                 /* If file names match */
-                if (!strcmp((char*)dir->name, path_arr[i])) {
+                if (dir->inode != 0 && !strcmp((char*)dir->name, path_arr[i])) {
                     read_inode(args->fp, s_block, &i_node, dir->inode, p_off);
                     match++;
                     break;
@@ -136,16 +140,26 @@ p_off, SEEK_SET);
         verb_sblock(s_block);
         verb_inode(&i_node);
     }
-
     /* Print out path if specified */
     if (S_ISDIR(i_node.mode)) {
         
         if (args->path != NULL) {
-            printf("%s/:\n", args->path);
+            printf("%s:\n", args->path);
         }
         else {
             printf("/:\n");
         }
+    }
+
+    if (i_node.mode == 0) {
+        if (path_arr) {
+            for (i = 0; i < args->path_ct; i++) {
+                free(path_arr[i]);
+            }
+            free(path_arr);
+        }
+        fprintf(stderr, "%s: File not found.\n", args->path);
+        shutdown_help(args->fp);
     }
     
     

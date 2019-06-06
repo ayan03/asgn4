@@ -6,6 +6,8 @@ int main(int argc, char *argv[]) {
     flags args;
     int opt;
     int opt_ct = 0;
+    char *token;
+    char tmp_path[MAX_PATH];
     superblock s_block = { 0 };
     args.partition = -1;
     args.subpartition = -1;
@@ -66,6 +68,17 @@ int main(int argc, char *argv[]) {
         print_help(MINGET_PROG);
         exit(EXIT_FAILURE);
     }
+
+    /* Find the path count */
+    if (args.path) {
+        strcpy(tmp_path, args.path);
+        token = strtok(tmp_path, "/");
+        while (token != NULL) {
+            args.path_ct++;
+            token = strtok(NULL, "/");
+        }
+    }
+    
 
     /* ./minls: print out the help instructions */
     if (argc == 1) {
